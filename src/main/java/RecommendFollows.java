@@ -52,11 +52,15 @@ public class RecommendFollows {
         // FIXME: implement AUC(?) and Precision
 
         // Simple logging for first pass implementation
+        System.out.println("*************************************************");
+        System.out.println("k: " + this.k);
+        System.out.println("Predicted links: " + this.predicted_links);
         System.out.println("Total pred_link_count: " + this.pred_link_count);
         System.out.println("Total rec_count: " + this.rec_count);
         System.out.println("Total valid_count: " + this.valid_count);
         System.out.println("Accuracy: " + (1.0*this.valid_count/this.rec_count));
         System.out.println("Precision: " + (1.0*this.valid_count/this.pred_link_count));
+        System.out.println("*************************************************");
 
     }
 
@@ -81,18 +85,40 @@ public class RecommendFollows {
         this.pred_link_count = 0;
 
         // get list of users ordered by number of FOLLOWS
-        this.users = getTopUsers(user_count);
 
-        Map<String,Object> linkMap = new HashMap<String, Object>();
+        for (int v=0; v < folds; v++) {
+            this.users = getRandomUsers(user_count);
+            Map<String,Object> linkMap = new HashMap<String,Object>();
 
-        for (Integer id : this.users) {
-            linkMap = recommend(id);
-            if ((Boolean)linkMap.get("test_in_pred")) {
-                this.valid_count += 1;
+            for (Integer id : this.users) {
+                try {
+                    linkMap = recommend(id);
+                    if ((Boolean) linkMap.get("test_in_pred")) {
+                        this.valid_count += 1;
+                    }
+                    this.rec_count += 1;
+                    this.pred_link_count += ((List) linkMap.get("pred")).size();
+                } catch (NullPointerException e) {
+                    System.out.println("Null Pointer exception");
+                    System.out.println(e.getMessage());
+                } catch (Exception e) {
+                    System.out.println("Exception during recommendation: ");
+                    System.out.println(e.getMessage());
+                }
             }
-            this.rec_count += 1;
-            this.pred_link_count += ((List)linkMap.get("pred")).size();
         }
+        //this.users = getTopUsers(user_count);
+
+        //Map<String,Object> linkMap = new HashMap<String, Object>();
+
+        //for (Integer id : this.users) {
+        //    linkMap = recommend(id);
+        //    if ((Boolean)linkMap.get("test_in_pred")) {
+        //        this.valid_count += 1;
+        //    }
+        //    this.rec_count += 1;
+        //    this.pred_link_count += ((List)linkMap.get("pred")).size();
+        //}
 
     }
 
@@ -112,6 +138,34 @@ public class RecommendFollows {
 
         Iterator<Map<String, Object>> result = engine.execute(query, params).iterator();
         while(result.hasNext()) {
+            Map<String, Object> row = result.next();
+            resultsArray.add((Integer)row.get("id"));
+        }
+
+        return resultsArray;
+    }
+
+    /** Query graph database for user_ids at random
+     *
+     * @param num_users             Number of users to return
+     * @return ArrayList<Integer>   User ids
+     */
+    public ArrayList<Integer> getRandomUsers(Integer num_users) {
+        ArrayList<Integer> resultsArray = new ArrayList<Integer>();
+        Map<String, Object> params = new HashMap<String, Object>();
+        params.put("num_users", num_users);
+
+        String query =
+            "MATCH (u1:User)-[:FOLLOWS]->(x) WITH u1, count(x) as num\n" +
+            "ORDER BY num DESC\n" +
+            "WITH u1 LIMIT 10000\n" +
+            "WITH u1, rand() as random\n" +
+            "ORDER BY random\n" +
+            //"WITH u1 LIMIT 1\n" +
+            "RETURN u1.id AS id LIMIT {num_users}";
+
+        Iterator<Map<String, Object>> result = engine.execute(query, params).iterator();
+        while (result.hasNext()) {
             Map<String, Object> row = result.next();
             resultsArray.add((Integer)row.get("id"));
         }
@@ -146,12 +200,6 @@ public class RecommendFollows {
                         "// take x top recommendations\n" +
                         "// replace remove edge\n" +
                         "// Is test edge in x recommendations?\n" +
-                        //"MATCH (u1:User)-[:FOLLOWS]->(x) WITH u1, count(x) as num\n" +
-                        //"ORDER BY num DESC\n" +
-                        //"WITH u1 LIMIT 1000\t// user_count\n" +
-                        //"WITH u1, rand() as random\n" +
-                        //"ORDER BY random\n" +
-                        //"WITH u1 LIMIT 1\n" +
                         "MATCH (u1:User {id: {user_id}})-[:FOLLOWS]->(o) WITH o, rand() as r, u1 \n" +
                         "ORDER BY r \n" +
                         "WITH u1, o LIMIT {leaveout_links} \n" +
@@ -195,10 +243,63 @@ public class RecommendFollows {
 
         // Run test with cross validation
         // folds=10, k=50, predicted_links=50, leaveout_links=1, user_count=1000
-        rec_sys.runWithCrossValidation(10, 50, 50, 1, 1000);
+        //rec_sys.runWithCrossValidation(10, 50, 50, 1, 100);
+        //rec_sys.runWithCrossValidation(5, , 25, 1, 100);
+        //rec_sys.runWithCrossValidation(folds, k, predicted_links, leaveout_links, user_count);
+
+        rec_sys.runWithCrossValidation(10, 5, 25, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 5, 50, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 5, 100, 1, 10);
+        rec_sys.reportResults();
+
+        rec_sys.runWithCrossValidation(10, 10, 25, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 10, 50, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 10, 100, 1, 10);
+        rec_sys.reportResults();
+
+        rec_sys.runWithCrossValidation(10, 25, 25, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 25, 50, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 25, 100, 1, 10);
+        rec_sys.reportResults();
+
+        rec_sys.runWithCrossValidation(10, 50, 25, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 50, 50, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 50, 100, 1, 10);
+        rec_sys.reportResults();
+
+        rec_sys.runWithCrossValidation(10, 100, 25, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 100, 50, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 100, 100, 1, 10);
+        rec_sys.reportResults();
+
+        rec_sys.runWithCrossValidation(10, 1000, 25, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 1000, 50, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 1000, 100, 1, 10);
+        rec_sys.reportResults();
+
+        rec_sys.runWithCrossValidation(10, 2000, 25, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 2000, 50, 1, 10);
+        rec_sys.reportResults();
+        rec_sys.runWithCrossValidation(10, 2000, 100, 1, 10);
+        rec_sys.reportResults();
+
+
 
         // TODO: report results
-        rec_sys.reportResults();
+        //rec_sys.reportResults();
 
     }
 
