@@ -24,7 +24,7 @@ Maven - this project uses Maven for dependency resolution and building, install 
 * cd into the githubneo directory:
     `cd githubneo`
 * Run with maven:
-    `mvn exec:java -Dexec.mainClass="com.example.Main"`
+    `mvn exec:java -Dexec.mainClass="RecommendFollows"`
 
 The default configuration will run cross fold validation using random samples of the GitHub user graph for various
 configurations of the parameters. **NOTE: this will take a while to run.**
