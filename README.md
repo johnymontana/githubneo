@@ -7,7 +7,24 @@ user follows. More information is available in [this paper](http://lyonwj.com).
 ## Data
 
 GitHub follow data was collected from [Githubarchive.org](http://githubarchive.org) for the period April 1, 2013 - April 1, 2014.
-This data was inserted into a Neo4j graph database instance for analysis. All user data is anonymized and is stored in Neo4j format
+This data was anonymized and serialized to edgelist format:
+
+    1	2
+    3	4
+    5	6
+    7	8
+    9	10
+    11	12
+    11	13
+    14	15
+    16	17
+    18	19
+
+Where the first column corresponds to the user id of the source id, the second column indicates the destination user id.
+The example above therefore represents user 1 follows user 2, user 3 follows user 4... The edgelist file for this project
+is `data/git_follow/edgelist` in this repository.
+
+This data was then inserted into a Neo4j graph database instance for analysis. All user data is anonymized and is stored in Neo4j format
 in the `data` directory in this project.
 
 ## Dependencies
